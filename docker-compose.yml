@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///./land_records.db
+      SECRET_KEY: change-me-in-production
+      CORS_ORIGINS: http://localhost:5173
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/land_records.db:/app/land_records.db
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
