@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-const API_URL = "http://10.120.119.78:8000";
+const API_URL = "https://land-record-ai-full-project.onrender.com";
 
 export default function Registration() {
   const [form, setForm] = useState({

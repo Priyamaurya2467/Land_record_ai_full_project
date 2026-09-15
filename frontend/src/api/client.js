@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.120.119.78:8000";
+const API_BASE_URL = "https://land-record-ai-full-project.onrender.com";
 
 const TOKEN_KEY = "anvexa_auth_token";
 

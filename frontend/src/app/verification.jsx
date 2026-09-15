@@ -1039,21 +1039,7 @@ export default function Verification() {
               },
             ]}
           >
-            <Ionicons
-              name="sparkles-outline"
-              size={13}
-              color={theme.primary}
-            />
-
-            <Text
-              style={{
-                color: theme.primary,
-                fontSize: 9,
-                fontWeight: "800",
-              }}
-            >
-              AI
-            </Text>
+            
           </View>
         </View>
 

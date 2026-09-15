@@ -32,10 +32,7 @@ export default function LandingPage() {
             </View>
           </View>
 
-          <View style={styles.aiBadge}>
-            <Ionicons name="sparkles" size={14} color="#5B4BDB" />
-            <Text style={styles.aiBadgeText}>AI Powered</Text>
-          </View>
+          
         </View>
 
         {/* Hero */}
