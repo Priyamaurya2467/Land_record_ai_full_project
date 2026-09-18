@@ -1,32 +1,46 @@
 import os
+import shutil
 
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
 import pytesseract
 
-# ---------------------------------------------------------
-# Tesseract configuration
-# ---------------------------------------------------------
 
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# =========================================================
+# TESSERACT CONFIGURATION
+# =========================================================
+
+# Works on both Windows and Linux/Render.
+# Windows can use:
+# C:\Program Files\Tesseract-OCR\tesseract.exe
+#
+# Render/Linux can use:
+# /usr/bin/tesseract
+
+TESSERACT_CMD = (
+    os.getenv("TESSERACT_CMD")
+    or shutil.which("tesseract")
 )
 
+if TESSERACT_CMD:
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
-# ---------------------------------------------------------
-# Optional PDF support
-# ---------------------------------------------------------
+
+# =========================================================
+# PDF SUPPORT
+# =========================================================
 
 try:
     from pdf2image import convert_from_path
 
     PDF_SUPPORT = True
+
 except ImportError:
     PDF_SUPPORT = False
 
 
-# ---------------------------------------------------------
-# Supported OCR languages
-# ---------------------------------------------------------
+# =========================================================
+# SUPPORTED OCR LANGUAGES
+# =========================================================
 
 LANGUAGES = {
     "eng": "English",
@@ -43,9 +57,9 @@ LANGUAGES = {
 }
 
 
-# ---------------------------------------------------------
-# Image preprocessing
-# ---------------------------------------------------------
+# =========================================================
+# IMAGE PREPROCESSING
+# =========================================================
 
 def preprocess(img):
     """
@@ -59,6 +73,7 @@ def preprocess(img):
     width, height = img.size
 
     if width < 1800:
+
         scale = 1800 / width
 
         img = img.resize(
@@ -77,31 +92,36 @@ def preprocess(img):
     )
 
     # Sharpen text
-    img = ImageEnhance.Sharpness(img).enhance(2.0)
+    img = ImageEnhance.Sharpness(
+        img
+    ).enhance(2.0)
 
     # Improve text/background contrast
-    img = ImageEnhance.Contrast(img).enhance(1.4)
+    img = ImageEnhance.Contrast(
+        img
+    ).enhance(1.4)
 
     return img
 
 
-# ---------------------------------------------------------
-# OCR for a single image
-# ---------------------------------------------------------
+# =========================================================
+# OCR FOR SINGLE IMAGE
+# =========================================================
 
 def _ocr_image(image, lang):
     """
     Run Tesseract OCR using PSM 4.
-
-    PSM 4 works well for structured land-record
-    documents containing multiple text blocks.
     """
+
+    if not TESSERACT_CMD:
+
+        raise RuntimeError(
+            "Tesseract OCR is not installed "
+            "or cannot be found in PATH."
+        )
 
     image = preprocess(image)
 
-    # IMPORTANT:
-    # PSM 4 was tested against the land-record image
-    # and produced much better recognition.
     config = "--oem 3 --psm 4"
 
     data = pytesseract.image_to_data(
@@ -111,15 +131,6 @@ def _ocr_image(image, lang):
         output_type=pytesseract.Output.DICT,
     )
 
-    # Preserve OCR line structure.
-    # This is important for the extractor because
-    # fields such as:
-    #
-    # District: Dehradun
-    # Village: Rampur
-    #
-    # are much easier to extract when lines are preserved.
-
     lines = {}
     confidences = []
 
@@ -128,7 +139,9 @@ def _ocr_image(image, lang):
         word = word.strip()
 
         try:
-            confidence = float(data["conf"][i])
+            confidence = float(
+                data["conf"][i]
+            )
         except Exception:
             confidence = -1
 
@@ -150,9 +163,11 @@ def _ocr_image(image, lang):
 
         lines[key].append(word)
 
-        confidences.append(confidence)
+        confidences.append(
+            confidence
+        )
 
-    # Convert grouped words into separate lines
+    # Preserve OCR line structure
     text_lines = [
         " ".join(words)
         for words in lines.values()
@@ -160,9 +175,10 @@ def _ocr_image(image, lang):
 
     text = "\n".join(text_lines)
 
-    # Calculate average OCR confidence
+    # Average OCR confidence
     confidence = (
-        sum(confidences) / len(confidences)
+        sum(confidences)
+        / len(confidences)
         if confidences
         else 0.0
     )
@@ -170,9 +186,9 @@ def _ocr_image(image, lang):
     return text, confidence
 
 
-# ---------------------------------------------------------
-# Main OCR function
-# ---------------------------------------------------------
+# =========================================================
+# MAIN OCR FUNCTION
+# =========================================================
 
 def run_ocr(path, lang="eng"):
     """
@@ -182,29 +198,52 @@ def run_ocr(path, lang="eng"):
         text, confidence
     """
 
-    # Validate language
+    # -----------------------------------------------------
+    # TESSERACT CHECK
+    # -----------------------------------------------------
+
+    if not TESSERACT_CMD:
+
+        raise RuntimeError(
+            "Tesseract OCR is not installed "
+            "or cannot be found in PATH."
+        )
+
+    # -----------------------------------------------------
+    # LANGUAGE CHECK
+    # -----------------------------------------------------
+
     if lang not in LANGUAGES:
+
         raise ValueError(
             f"Unsupported OCR language: {lang}"
         )
 
-    # Validate file
+    # -----------------------------------------------------
+    # FILE CHECK
+    # -----------------------------------------------------
+
     if not os.path.exists(path):
+
         raise FileNotFoundError(
             f"OCR file not found: {path}"
         )
 
-    extension = os.path.splitext(path)[1].lower()
+    extension = os.path.splitext(
+        path
+    )[1].lower()
 
-    # -----------------------------------------------------
+    # =====================================================
     # PDF
-    # -----------------------------------------------------
+    # =====================================================
 
     if extension == ".pdf":
 
         if not PDF_SUPPORT:
+
             raise RuntimeError(
-                "PDF OCR requires pdf2image and Poppler."
+                "PDF OCR requires pdf2image "
+                "and Poppler."
             )
 
         pages = convert_from_path(
@@ -215,11 +254,16 @@ def run_ocr(path, lang="eng"):
         results = []
 
         for page in pages:
+
             results.append(
-                _ocr_image(page, lang)
+                _ocr_image(
+                    page,
+                    lang,
+                )
             )
 
         if not results:
+
             return "", 0.0
 
         text = "\n".join(
@@ -228,15 +272,18 @@ def run_ocr(path, lang="eng"):
         )
 
         confidence = (
-            sum(result[1] for result in results)
+            sum(
+                result[1]
+                for result in results
+            )
             / len(results)
         )
 
         return text, confidence
 
-    # -----------------------------------------------------
-    # Image
-   
+    # =====================================================
+    # IMAGE
+    # =====================================================
 
     with Image.open(path) as image:
 
