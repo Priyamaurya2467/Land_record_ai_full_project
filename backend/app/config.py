@@ -3,7 +3,7 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     app_name: str = "Land Record AI"
-    database_url: str = "sqlite:///./land_records.db"
+    database_url: str = "postgresql://localhost/land_records"
     secret_key: str = "replace-this-with-a-long-random-secret"
     access_token_expire_minutes: int = 480
     upload_dir: str = "./uploads"
